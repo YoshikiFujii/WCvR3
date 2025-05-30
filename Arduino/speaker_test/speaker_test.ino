@@ -34,7 +34,7 @@ void setup() {
 
 ISR(TIMER2_COMPA_vect) {
   OCR1A = sineTable[idx];
-  Serial.println(sineTable[idx]);  // ここで出力（毎回）
+  Serial.println(sineTable[idx]);  // 出力
   idx = (idx + 1) % 32;
 }
 
