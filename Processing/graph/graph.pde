@@ -8,7 +8,7 @@ boolean dataUpdated = false;
 
 void setup() {
   size(900, 400);
-  port = new Serial(this, "/dev/tty.usbmodem11401", 115200);  // ポート番号は必要に応じて変更
+  port = new Serial(this, "/dev/tty.usbmodem1301", 115200);  // ポート番号は必要に応じて変更
   port.bufferUntil('\n');  // 行単位で受信
 }
 

@@ -8,12 +8,25 @@ const uint8_t sineTable[32] = {
 //voatile→この変数は割り込みによって変更される可能性があると明示
 volatile uint8_t idx = 0;
 
+// 周波数→OCR2Aの対応表（分周8、16MHz）
+struct ToneSetting {
+  uint16_t freq;
+  uint8_t ocr2a;
+};
+
+ToneSetting tones[] = {
+  {3000, 20},  // 3000Hz × 32 = 96kHz → OCR2A = 20
+  {4000, 14},  // 4000Hz × 32 = 128kHz → OCR2A = 14
+  {5000, 11},  // 5000Hz × 32 = 160kHz → OCR2A = 11
+  {6000, 9}    // 6000Hz × 32 = 192kHz → OCR2A = 9
+};
+uint8_t currentTone = 0;
+unsigned long lastSwitch = 0;
 //fastPWMは分解能10bit　analogWriteなら8bit
 //fastPWMについて、タイマーが０→最大値→０を高速に繰り返す間に、設定された比較値（OCRレジスタ）に達するとHIGH/LOWを切り替える
 //これにより、ハードウェアPWM(タイマーとOCRレジスタ)が自動でデューティー比を計算してくれる
 void setup() {
   pinMode(9, OUTPUT);
-  Serial.begin(115200);  
   // Timer1で62.5kHzのPWM（Fast PWMモード）
   //COM1A1:ピン９をPWM出力として有効化　WGM11 WGM10:波形の設定（fastPWM 10bit）
   TCCR1A = _BV(COM1A1) | _BV(WGM11) | _BV(WGM10);
@@ -27,17 +40,20 @@ void setup() {
   //WGM21:波形生成を、CTCモードに設定（カウンターがOCR2Aに達するとリセット→一定周期で割り込みを発生させる）
   TCCR2A = _BV(WGM21);
   //分周比(テーブルの一点の更新間隔を全て変える)を８にする→動作クロックは2MHz
-  TCCR2B = _BV(CS21); 
-  OCR2A = 199; // 16MHz / 8 / (199 + 1) = 10kHz　サインテーブルのある値を199回出力すると次の値にいく
+  TCCR2B = _BV(CS21);
+  OCR2A = tones[currentTone].ocr2a;
   TIMSK2 = _BV(OCIE2A); // 割り込みのたびにISR()を実行
 }
 
 ISR(TIMER2_COMPA_vect) {
   OCR1A = sineTable[idx];
-  Serial.println(sineTable[idx]);  // 出力
   idx = (idx + 1) % 32;
 }
 
 void loop() {
-  // メインループは空でOK
+  if(millis() - lastSwitch > 1000) {
+    currentTone = (currentTone + 1) % 4;
+    OCR2A = tones[currentTone].ocr2a;
+    lastSwitch = millis();
+  }
 }
