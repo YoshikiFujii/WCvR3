@@ -91,10 +91,12 @@ void loop() {
     float q0 = 0, q1 = 0, q2 = 0;
 
     for (uint16_t i = 0; i < samples; i++) {
+      float window = 0.54 - 0.46 * cos(2 * PI * i / (samples - 1)); // hamming窓
       // ADC読み取り
       ADCSRA |= (1 << ADSC);
       while (ADCSRA & (1 << ADSC));
       float val = (float)ADC;
+      val *= window; // 窓関数をかける
 
       //式：q[n]=2cos(ω)⋅q[n−1]−q[n−2]+x[n]
       q0 = coeffs[f] * q1 - q2 + val;
