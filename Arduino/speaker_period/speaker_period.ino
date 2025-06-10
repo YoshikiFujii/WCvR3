@@ -5,8 +5,12 @@ const uint8_t sineTable[32] = {
   128, 104, 80,  58,  38,  22,  11,   5,
     0,   5, 11,  22,  38,  58,  80, 104
 };
+
 //voatile→この変数は割り込みによって変更される可能性があると明示
-volatile uint8_t idx = 0;
+//同時に発生させる周波数の数増やす
+volatile uint8_t idx7000 = 0;
+volatile uint8_t idxData = 0;
+voltile uintt8_t dataCounter = 0;
 
 // 周波数→OCR2Aの対応表（分周8、16MHz）
 struct ToneSetting {
@@ -20,7 +24,12 @@ ToneSetting tones[] = {
   {4000, 14},  // 5000Hz × 32 = 160kHz → OCR2A = 11
   {4500, 12}    // 6000Hz × 32 = 192kHz → OCR2A = 9
 };
-uint8_t currentTone = 2;
+//同期用信号7kHz 7000Hz ✖️ 32 = 224kHz → OCR2A = 8
+
+// 7000Hz ÷ 各toneの周波数 ≒ idxDataを何回に1回進めるか
+const uint_8_t skipSteps[] = {7,6,5,4};
+
+uint8_t currentTone = 0;
 unsigned long lastSwitch = 0;
 //fastPWMは分解能10bit　analogWriteなら8bit
 //fastPWMについて、タイマーが０→最大値→０を高速に繰り返す間に、設定された比較値（OCRレジスタ）に達するとHIGH/LOWを切り替える
@@ -41,19 +50,25 @@ void setup() {
   TCCR2A = _BV(WGM21);
   //分周比(テーブルの一点の更新間隔を全て変える)を８にする→動作クロックは2MHz
   TCCR2B = _BV(CS21);
-  OCR2A = tones[currentTone].ocr2a;
+  OCR2A = 8; //同期用7000Hz信号（この信号は他の送信する信号よりも高周波にする）
   TIMSK2 = _BV(OCIE2A); // 割り込みのたびにISR()を実行
 }
 
 ISR(TIMER2_COMPA_vect) {
-  OCR1A = sineTable[idx];
-  idx = (idx + 1) % 32;
+  idx7000 = (idx7000 + 1) % 32;
+  dataCounter++;
+  if(dataCounter >= skipSteps[currentTone]){
+    dataCounter = 0;
+    idxData = (idxData + 1) % 32;
+  }
+  uint16_t sum = sineTable[idxData] + sineTable[idx7000];
+  OCR1A = sum / 2;
 }
 
 void loop() {
+  //受信側が３回受信するのにかかる時間の間送信する。高速化できれば適宜変更する。
   if(millis() - lastSwitch > 200) {
     currentTone = (currentTone + 1) % 4;
-    OCR2A = tones[currentTone].ocr2a;
     lastSwitch = millis();
   }
 }

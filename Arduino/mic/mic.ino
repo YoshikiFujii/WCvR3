@@ -30,11 +30,31 @@ void loop() {
   FFT.compute(vReal, vImag, samples, FFT_FORWARD);                  // FFT実行
   FFT.complexToMagnitude(vReal, vImag, samples);                    // 実部と虚部から振幅へ変換
 
+    // --- ピーク検出 ---
+  uint16_t peakIndex = 0;
+  float peakValue = 0.0;
+  for (uint16_t i = 3; i < samples / 2; i++) {
+    if (vReal[i] > peakValue) {
+      peakValue = vReal[i];
+      peakIndex = i;
+    }
+  }
+
+  // --- 周波数に変換 ---
+  float peakFreq = (peakIndex * samplingFrequency) / samples;
+  // --- 判定 ---
+  if      (peakFreq > 2750 && peakFreq < 3250) Serial.println("00");  // ≒ 3kHz
+  else if (peakFreq > 3250 && peakFreq < 3750) Serial.println("01");  // ≒ 4kHz
+  else if (peakFreq > 3750 && peakFreq < 4250) Serial.println("10");  // ≒ 5kHz
+  else if (peakFreq > 4250 && peakFreq < 4750) Serial.println("11");  // ≒ 6kHz
+  else Serial.println(peakFreq); // 判定不能
   // --- 結果出力 ---
+  /*
   for (uint16_t i = 3; i < samples / 2; i++) {
     // 出力される周波数の後半は鏡像になってるためsample/2
     //i=3までは直流部分（無音状態での電圧）で、大きな成分が出てしまうため。
     //samplingFrequency / sample で１ビンあたりの音の周波数間隔。
+  
     float freq = (i * samplingFrequency) / samples;
     if (!isnan(vReal[i])) {
       Serial.print(freq);
@@ -43,4 +63,5 @@ void loop() {
     }
   }
   Serial.println("----");
+  */
 }
