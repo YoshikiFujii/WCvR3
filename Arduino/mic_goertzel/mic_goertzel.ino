@@ -1,6 +1,6 @@
 //---------デバイス依存--------
 const uint16_t samples = 128;
-float samplingFrequency = 3000.0; // Hz
+float samplingFrequency = 15000.0; // Hz
 
 //----------設定項目----------
 uint8_t targetCount = 4;
@@ -32,11 +32,11 @@ void loop() {
   //式：q[n]=2cos(ω)⋅q[n−1]−q[n−2]+x[n]
   // Goertzel変数
   float q0, q1, q2;
-
+  
   // 各周波数ごとに初期化
   for (int f = 0; f < targetCount; f++) {
     q0 = q1 = q2 = 0.0;
-
+    unsigned long startMicros = micros();
     for (uint16_t i = 0; i < samples; i++) {
       // ADC読み取り
       ADCSRA |= (1 << ADSC);
@@ -48,6 +48,10 @@ void loop() {
       q2 = q1;
       q1 = q0;
     }
+    unsigned long elapsedMicros = micros() - startMicros;
+    float timePerSample = (float)elapsedMicros / samples;
+    samplingFrequency = 1000000.0 / timePerSample * 0.9; //安全のため、90%のマージン
+
     // 振幅を計算
     magnitudes[f] = sqrt(q1 * q1 + q2 * q2 - q1 * q2 * coeffs[f]);
   }

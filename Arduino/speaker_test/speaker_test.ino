@@ -20,7 +20,7 @@ ToneSetting tones[] = {
   {4000, 14},  // 5000Hz × 32 = 160kHz → OCR2A = 11
   {4500, 12}    // 6000Hz × 32 = 192kHz → OCR2A = 9
 };
-uint8_t currentTone = 2;
+uint8_t currentTone = 0;
 unsigned long lastSwitch = 0;
 //fastPWMは分解能10bit　analogWriteなら8bit
 //fastPWMについて、タイマーが０→最大値→０を高速に繰り返す間に、設定された比較値（OCRレジスタ）に達するとHIGH/LOWを切り替える

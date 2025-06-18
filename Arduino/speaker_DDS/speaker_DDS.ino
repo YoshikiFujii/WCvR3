@@ -1,7 +1,6 @@
 //---------------設定項目---------------
-const float STEP_FREQ = BASE_FREQ * 32;  // 割り込み周波数（Hz）→ 224000Hz
 const float BASE_FREQ = 7000.0;  // 同期周波数（Hz）
-const float dataFreqs[] = {3000.0, 3500.0, 4000.0, 4500.0};　// データ信号の周波数
+const float dataFreqs[] = {3000.0, 3500.0, 4000.0, 4500.0}; // データ信号の周波数
 const uint8_t targetCount = 4;
 //---------------内部係数---------------
 //sinテーブル
@@ -12,8 +11,8 @@ const uint8_t sineTable[32] = {
     0,   5, 11,  22,  38,  58,  80, 104
 };
 const float PHASE_SCALE = 32.0;  // テーブルサイズ
+const float STEP_FREQ = BASE_FREQ * PHASE_SCALE;  // 割り込み周波数（Hz）→ 224000Hz
 
-float phase = 0.0;　//現在のテーブルの位置(位相)
 float phaseStep = 0.0; //毎回の割り込みでどれだけphaseを進めるか  !!!!setup()ですべての周波数を計算しておくのも試す!!!!
 
 volatile float syncPhase = 0.0; //同期信号の現在の位相位置
@@ -40,7 +39,8 @@ void setup() {
   TIMSK2 = _BV(OCIE2A);
 
   // 初期位相ステップ設定
-  phaseStep = dataFreqs[currentTone] / BASE_FREQ;
+  //phaseStep = dataFreqs[currentTone] / BASE_FREQ;
+  phaseStep = dataFreqs[currentTone] / STEP_FREQ * PHASE_SCALE;
 }
 
 //----------割り込みのたびに実行----------
@@ -61,7 +61,8 @@ ISR(TIMER2_COMPA_vect) {
 void loop() {
   if (millis() - lastSwitch >= 200) {
     currentTone = (currentTone + 1) % targetCount;
-    phaseStep = dataFreqs[currentTone] / BASE_FREQ;
+    //phaseStep = dataFreqs[currentTone] / BASE_FREQ;
+    phaseStep = dataFreqs[currentTone] / STEP_FREQ * PHASE_SCALE;
     lastSwitch = millis();
   }
 }

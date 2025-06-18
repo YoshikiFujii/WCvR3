@@ -1,12 +1,12 @@
 //----------設定項目----------
-float BASE_FREQ = 7000;                       // 同期信号の周波数(Hz)
-float dataFreqs[] = {3000, 3500, 4000, 4500}; // データ信号の周波数(Hz)
+uint16_t BASE_FREQ = 7000;                       // 同期信号の周波数(Hz)
+uint16_t dataFreqs[] = {3000, 3500, 4000, 4500}; // データ信号の周波数(Hz)
 uint8_t targetCount = 4;                      // データ周波数の数
 float noiseMultiple = 2.0;                    // ノイズ*noiseMultiple以上で信号が存在すると判定
-const uint16_t samples = 128;                 // サンプル数128
+const uint16_t samples = 210;                 // サンプル数
 float samplingFrequency = 14000.0;            // サンプリング周波数(Hz)
 //----------内部係数----------
-float windowTable[samples];                   // 窓関数用
+uint8_t windowTable[samples];                   // 窓関数用
 float coeffs[5];                              // goertzelの一部。setupで算出
 float magnitudes[5];                          // 周波数ごとの強度
 float noiseLevels[5];                         // 各周波数ごとのノイズレベル
@@ -14,7 +14,7 @@ float syncThresholds[5];                      // noiselevel*noiseMultiple
 //--- Timer用グローバル変数 ---
 volatile uint16_t sampleIndex = 0;            // ISR内カウント用
 volatile bool bufferReady = false;            // sample個サンプリング終了判定
-float adcBuffer[samples];                     // ISR内でインデックスを保存
+int16_t adcBuffer[samples];                   // ISR内でインデックスを保存
 
 
 //-------------------------------------------------------------------
@@ -22,7 +22,7 @@ float adcBuffer[samples];                     // ISR内でインデックスを�
 ISR(TIMER1_COMPA_vect) {
   ADCSRA |= (1 << ADSC);
   while (ADCSRA & (1 << ADSC));
-  float val = (float)ADC - 512.0;   //ADC読み取り
+  int16_t val = (int16_t)ADC - 512;   //ADC読み取り
   adcBuffer[sampleIndex++] = val;   //バッファに書き込み
   if (sampleIndex >= samples) {
     sampleIndex = 0;
@@ -45,7 +45,8 @@ void setup() {
   
   //----------hamming窓関数の作成----------
   for (uint16_t i = 0; i < samples; i++) {
-    windowTable[i] = 0.54 - 0.46 * cos(2 * PI * i / (samples - 1)); 
+    float w = 0.54 - 0.46 * cos(2 * PI * i / (samples - 1)); 
+    windowTable[i] = (uint8_t)(w * 255);
   }
   delay(1000); 
   //---------ノイズレベルの初期化---------
@@ -56,7 +57,7 @@ void setup() {
       for (uint16_t i = 0; i < samples; i++) {
         ADCSRA |= (1 << ADSC);
         while (ADCSRA & (1 << ADSC));
-        float val = ((float)ADC - 512.0) * windowTable[i];
+        float val = ((float)ADC - 512.0) * ((float)windowTable[i] / 255.0);
         q0 = coeffs[f] * q1 - q2 + val;
         q2 = q1;
         q1 = q0;
@@ -96,13 +97,16 @@ void loop() {
   float bufferCopy[samples];                          //バッファ内のサンプルをコピーして使用
 
   noInterrupts();                                     //計算完了までサンプリング停止
-  memcpy(bufferCopy, adcBuffer, sizeof(bufferCopy));
+  for (uint16_t i = 0; i < samples; i++) {
+    bufferCopy[i] = (float)adcBuffer[i];
+  }
+
   bufferReady = false;
   
   for (int f = 0; f < targetCount+1; f++) {           // 各周波数ごとに初期化
     float q0 = 0, q1 = 0, q2 = 0;
     for (uint16_t i = 0; i < samples; i++) {
-      float val = bufferCopy[i] * windowTable[i];     //窓関数適用
+      float val = (float)bufferCopy[i] * ((float)windowTable[i] / 255.0);     //窓関数適用
       q0 = coeffs[f] * q1 - q2 + val;                 //式：q[n]=2cos(ω)⋅q[n−1]−q[n−2]+x[n]
       q2 = q1;
       q1 = q0;
