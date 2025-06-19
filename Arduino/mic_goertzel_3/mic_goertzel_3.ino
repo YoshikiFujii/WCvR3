@@ -1,12 +1,12 @@
 //----------設定項目----------
-uint16_t BASE_FREQ = 7000;                       // 同期信号の周波数(Hz)
-uint16_t dataFreqs[] = {3000, 3500, 4000, 4500}; // データ信号の周波数(Hz)
-uint8_t targetCount = 4;                      // データ周波数の数
-float noiseMultiple = 2.0;                    // ノイズ*noiseMultiple以上で信号が存在すると判定
-const uint16_t samples = 210;                 // サンプル数
-float samplingFrequency = 14000.0;            // サンプリング周波数(Hz)
+uint16_t BASE_FREQ = 5000;                        // 同期信号の周波数(Hz)
+uint16_t dataFreqs[] = {3000, 3500, 4000, 4500};  // データ信号の周波数(Hz)
+uint8_t targetCount = 4;                          // データ周波数の数
+float noiseMultiple = 2.0;                        // ノイズ*noiseMultiple以上で信号が存在すると判定
+const uint16_t samples = 210;                     // サンプル数
+float samplingFrequency = 14000.0;                // サンプリング周波数(Hz)
 //----------内部係数----------
-uint8_t windowTable[samples];                   // 窓関数用
+uint8_t windowTable[samples];                 // 窓関数用
 float coeffs[5];                              // goertzelの一部。setupで算出
 float magnitudes[5];                          // 周波数ごとの強度
 float noiseLevels[5];                         // 各周波数ごとのノイズレベル
@@ -116,6 +116,7 @@ void loop() {
 
   //--------------------------------------------------------------------
   //------------------------解析結果からデータ化---------------------------
+  /*
   uint8_t catchedData = 0;                                        //最大7bit変数 増やせればuint16_tへ
   if (magnitudes[targetCount] >= syncThresholds[targetCount]) {   // 同期信号検出時のみ出力
     for (int i = 0; i < targetCount; i++) {
@@ -130,11 +131,10 @@ void loop() {
     }
     Serial.println();
   }
-  /* -----debug-----*/
   else{
     Serial.println("---");
   }
-    /* -----debug----- 
+  */
   Serial.print(BASE_FREQ);
   Serial.print(" : ");
   Serial.println(magnitudes[targetCount]);
@@ -143,6 +143,5 @@ void loop() {
     Serial.print(" : ");
     Serial.println(magnitudes[i]);
   }
-  */
   interrupts();         //次のサンプリング開始
 }
