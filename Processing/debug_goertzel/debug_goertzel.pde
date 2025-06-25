@@ -2,11 +2,11 @@ import processing.serial.*;
 
 Serial myPort;
 
-int freqCount = 5;
+int freqCount = 9;
 int timeSteps = 200;  // 横幅方向の履歴数
 float[][] history = new float[freqCount][timeSteps];  // [周波数][時間]
-String[] freqLabels = { "3000", "3500", "4000", "4500", "5000" };
-color[] freqColors = { color(255,0,0), color(0,255,0), color(0,0,255), color(128,0,255), color(255,128,0) };
+String[] freqLabels = { "1000", "1500", "2000", "2500","3000", "3500", "4000", "4500", "5000" };
+color[] freqColors = { color(255,0,0), color(0,255,0), color(0,0,255), color(255,0,128), color(255,128,0), color(0,255,128), color(128,255,0), color(0,128,255), color(128,0,255)};
 
 float[] latestValues = new float[freqCount];
 String inputLine = "";
@@ -14,7 +14,7 @@ String inputLine = "";
 void setup() {
   size(800, 400);
   println(Serial.list());
-  myPort = new Serial(this, "/dev/cu.usbmodem1301", 115200);
+  myPort = new Serial(this, "/dev/cu.usbmodem11401", 115200);
   myPort.bufferUntil('\n');
   background(0);
 }

@@ -3,7 +3,7 @@ uint16_t BASE_FREQ = 5000;                        // 同期信号の周波数(Hz
 uint16_t dataFreqs[] = {1000, 1500 ,2000 ,2500 ,3000, 3500, 4000, 4500};  // データ信号の周波数(Hz)
 uint8_t targetCount = 8;                          // データ周波数の数
 float noiseMultiple = 2.5;                        // ノイズ*noiseMultiple以上で信号が存在すると判定
-const uint16_t samples = 210;                     // サンプル数
+const uint16_t samples = 420;                     // サンプル数
 float samplingFrequency = 14000.0;                // サンプリング周波数(Hz)
 //----------内部係数----------
 float coeffs[9];                              // goertzelの一部。setupで算出
@@ -13,16 +13,15 @@ float syncThresholds[9];                      // noiselevel*noiseMultiple
 //--- Timer用グローバル変数 ---
 volatile uint16_t sampleIndex = 0;            // ISR内カウント用
 volatile bool bufferReady = false;            // sample個サンプリング終了判定
-int16_t adcBuffer[samples];                   // ISR内でインデックスを保存
-
+int8_t adcBuffer[samples];                   // ISR内でインデックスを保存
 
 //-------------------------------------------------------------------
 //-----------割り込み処理：一回のgoertzel算出に使うサンプルを収集-----------
 ISR(TIMER1_COMPA_vect) {
   ADCSRA |= (1 << ADSC);
   while (ADCSRA & (1 << ADSC));
-  int16_t val = (int16_t)ADC - 512;   //ADC読み取り
-  adcBuffer[sampleIndex++] = val;   //バッファに書き込み
+  int8_t val = ADCH; //上位8bitのみ
+  adcBuffer[sampleIndex++] = (int8_t)val - 128;   //バッファに書き込み
   if (sampleIndex >= samples) {
     sampleIndex = 0;
     bufferReady = true;             //サンプリング完了&解析開始合図
@@ -87,20 +86,15 @@ void loop() {
   //--------------------------------------------------------------------
   //----------------------------Goertzel計算本体-------------------------
   if (!bufferReady) return;                           //サンプリング完了まで待機
-  float bufferCopy[samples];                          //バッファ内のサンプルをコピーして使用
 
   noInterrupts();                                     //計算完了までサンプリング停止
-  for (uint16_t i = 0; i < samples; i++) {
-    bufferCopy[i] = (float)adcBuffer[i];
-  }
 
   bufferReady = false;
   
   for (int f = 0; f < targetCount+1; f++) {           // 各周波数ごとに初期化
     float q0 = 0, q1 = 0, q2 = 0;
-    for (uint16_t i = 0; i < samples; i++) {
-      float val = (float)bufferCopy[i];     //窓関数適用
-      q0 = coeffs[f] * q1 - q2 + val;                 //式：q[n]=2cos(ω)⋅q[n−1]−q[n−2]+x[n]
+    for (uint16_t i = 0; i < samples; i++) { 
+      q0 = coeffs[f] * q1 - q2 + (float)adcBuffer[i];                 //式：q[n]=2cos(ω)⋅q[n−1]−q[n−2]+x[n]
       q2 = q1;
       q1 = q0;
     }
