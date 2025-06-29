@@ -109,7 +109,7 @@ void setup() {
   // フェーズインクリメントを計算 (32bit累算器向け)
   // phase += inc; で 32bit フルレンジ(2^32) を 1 サンプルで進む量
   inc1 = (uint32_t)((uint64_t)1000UL * 4294967296UL / SAMPLE_RATE);  // 1 kHz
-  inc2 = (uint32_t)((uint64_t)5000UL * 4294967296UL / SAMPLE_RATE);  // 2 kHz
+  inc2 = (uint32_t)((uint64_t)7000UL * 4294967296UL / SAMPLE_RATE);  // 2 kHz
   sei();  // グローバル割り込み有効化
 }
 

@@ -14,7 +14,7 @@ String inputLine = "";
 void setup() {
   size(800, 400);
   println(Serial.list());
-  myPort = new Serial(this, "/dev/cu.usbmodem11401", 115200);
+  myPort = new Serial(this, "/dev/cu.usbmodem1401", 115200);
   myPort.bufferUntil('\n');
   background(0);
 }

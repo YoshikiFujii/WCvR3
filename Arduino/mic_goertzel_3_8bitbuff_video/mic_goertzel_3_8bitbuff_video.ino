@@ -1,3 +1,7 @@
+#include <SoftwareSerial.h>
+SoftwareSerial mySerial(10, 11); // RX, TX
+
+
 //----------設定項目----------
 uint16_t BASE_FREQ = 5000;                        // 同期信号の周波数(Hz)
 uint16_t dataFreqs[] = {1000, 1500 ,2000 ,2500 ,3000, 3500, 4000, 4500};  // データ信号の周波数(Hz)
@@ -29,7 +33,7 @@ ISR(TIMER1_COMPA_vect) {
 }
 
 void setup() {
-  Serial.begin(115200);
+  mySerial.begin(9600);
   //----------信号受信設定(レジスタへの書き込み)----------
   ADMUX = (1 << REFS0);                                 // AVccを基準電圧に
   ADCSRA = (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1);   // ADC有効化、クロック分周
@@ -103,7 +107,7 @@ void loop() {
 
   //--------------------------------------------------------------------
   //------------------------解析結果からデータ化---------------------------
-  uint8_t catchedData = 0;                                        //最大7bit変数 増やせればuint16_tへ
+  uint16_t catchedData = 0;                                        //最大7bit変数 増やせればuint16_tへ
   if (magnitudes[targetCount] >= syncThresholds[targetCount]) {   // 同期信号検出時のみ出力
     for (int i = 0; i < targetCount; i++) {
       if (magnitudes[i] >= syncThresholds[i]) {
@@ -111,9 +115,8 @@ void loop() {
       }
     }
     //----------コード出力----------
-    Serial.print("catchedData(bin): ");
     for (int i = targetCount - 1; i >= 0; i--) {
-      Serial.print((catchedData >> i) & 1);
+      mySerial.print((catchedData >> i) & 1);
     }
     Serial.println();
   }

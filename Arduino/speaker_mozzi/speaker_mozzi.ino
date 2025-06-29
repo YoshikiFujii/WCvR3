@@ -1,61 +1,63 @@
-#define CONTROL_RATE 64      // Mozziの制御レート（制御用割り込み周波数）
-#define AUDIO_RATE   32000   // Mozziのオーディオレート（サンプルレート）
-#define NUM_OSC      2       // 同時に鳴らすsin波の数
-#define DAC_CS_PIN   10      // MCP4921のCSピン
-
+// この3つは必須
 #include <MozziGuts.h>
-#include <Oscil.h>               // DDSオシレータ
-#include <tables/sin2048_int8.h> // 2048点のsin波テーブル
-#include <SPI.h>
+#include <Oscil.h>
+#include <tables/sin2048_int8.h>
+#include <LowPassFilter.h>  // ローパスフィルタ追加
 
-// 各周波数（Hz）を定義（int型に変更し、setFreq(int) を呼び出しやすく）
-const int frequencies[NUM_OSC] = {1000, 2000};
+// updateControl()の呼び出し間隔を指定
+#define CONTROL_RATE 128
 
-// 複数のオシレータを定義（最大NUM_OSC個）
-Oscil<2048, AUDIO_RATE> osc1(SIN2048_DATA);
-Oscil<2048, AUDIO_RATE> osc2(SIN2048_DATA);
+// オシレーターの初期化
+Oscil <SIN2048_NUM_CELLS, AUDIO_RATE> aSin(SIN2048_DATA);
+// 振幅補正ゲイン（例）
+const float gain_list[] = {1.0, 1.2, 1.5, 1.8, 2.0, 2.5, 3.0}; 
+// ローパスフィルタの初期化
+LowPassFilter filter;
 
-// MCP4921に12bitデータを送る関数
-void sendToDAC(uint16_t val) {
-  uint16_t cmd = 0b0011000000000000 | (val & 0x0FFF);
-  digitalWrite(DAC_CS_PIN, LOW);
-  SPI.transfer(cmd >> 8);
-  SPI.transfer(cmd & 0xFF);
-  digitalWrite(DAC_CS_PIN, HIGH);
+// 周波数リスト
+const int freq_list[] = {1000, 2000, 3000, 4000, 5000, 6000, 7000};
+const int freq_count = sizeof(freq_list) / sizeof(freq_list[0]);
+int current_index = 0;
+
+// カウンタ変数
+unsigned long count = 0;
+const unsigned long change_interval = CONTROL_RATE * 1;  // 1秒ごとに変更
+
+void setup(){
+    startMozzi(CONTROL_RATE);
+    aSin.setFreq(freq_list[current_index]);
+
+    // カットオフ周波数は出したい音より少し高めに設定
+    filter.setCutoffFreq(8000);
 }
 
-void setup() {
-  // SPIとCSピンの初期化
-  pinMode(DAC_CS_PIN, OUTPUT);
-  digitalWrite(DAC_CS_PIN, HIGH);
-  SPI.begin();
-
-  // Mozzi開始
-  startMozzi(CONTROL_RATE);
-
-  // 各オシレータの周波数設定（int型周波数を使ってsetFreq(int)を呼び出し）
-  osc1.setFreq(frequencies[0]);
-  osc2.setFreq(frequencies[1]);
+void updateControl(){
+    count++;
+    if (count >= change_interval) {
+        count = 0;
+        // 次の周波数へ
+        current_index++;
+        if (current_index >= freq_count) {
+            current_index = 0;
+        }
+        aSin.setFreq(freq_list[current_index]);
+    }
 }
 
-// 1サンプル分の音声データを生成・出力
-int updateAudio() {
-  // 各オシレータからサンプル取得（-128 ～ +127）
-  int s1 = osc1.next();
-  int s2 = osc2.next();
-  // 2波を平均して合成
-  int mix = (s1 + s2) / 2;
-  // -128～127 を 0～4095 にマッピングしてDACへ出力
-  uint16_t dac_val = map(mix, -128, 127, 0, 4095);
-  sendToDAC(dac_val);
-  // MozziのPWM出力も同時に行う
-  return mix;
+int updateAudio(){
+    int32_t sig = aSin.next();
+    // 振幅補正
+    sig = (int32_t)(sig * gain_list[current_index]);
+
+    // ローパスフィルタを適用
+    sig = filter.next(sig);
+
+    // clip to [-128,127]
+    if(sig > 127) sig = 127;
+    if(sig < -128) sig = -128;
+    return sig;
 }
 
-// CONTROL_RATEごとに呼ばれる（今回は未使用）
-void updateControl() {
-}
-
-void loop() {
-  audioHook();  // Mozziの内部処理呼び出し
+void loop(){
+    audioHook();
 }
